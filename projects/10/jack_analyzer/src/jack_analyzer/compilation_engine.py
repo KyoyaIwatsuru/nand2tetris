@@ -1,11 +1,5 @@
-from const import (
-    Identifier,
-    IntegerConstant,
-    StringConstant,
-    Tokens,
-    TokenType,
-)
-from jack_tokenizer import JackTokenizer
+from .const import Identifier, Tokens, TokenType, escape_xml
+from .jack_tokenizer import JackTokenizer
 
 
 class CompilationEngine:
@@ -19,10 +13,7 @@ class CompilationEngine:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.wf.close()
 
-    def compile(self):
-        self.compile_class()
-
-    def compile_class(self):
+    def compileClass(self):
         self.write_element_start("class")
 
         self.compile_keyword([Tokens.CLASS])
@@ -30,16 +21,16 @@ class CompilationEngine:
         self.compile_symbol(Tokens.LEFT_CURLY_BRACKET)
 
         while self.next_is_class_var_dec():
-            self.compile_class_var_dec()
+            self.compileClassVarDec()
 
         while self.next_is_subroutine_dec():
-            self.compile_subroutine_dec()
+            self.compileSubroutine()
 
         self.compile_symbol(Tokens.RIGHT_CURLY_BRACKET)
 
         self.write_element_end("class")
 
-    def compile_class_var_dec(self):
+    def compileClassVarDec(self):
         self.write_element_start("classVarDec")
 
         self.compile_keyword([Tokens.STATIC, Tokens.FIELD])
@@ -59,8 +50,11 @@ class CompilationEngine:
             self.compile_keyword([Tokens.INT, Tokens.CHAR, Tokens.BOOLEAN])
         elif isinstance(self.tokenizer.see_next(), Identifier):
             self.compile_identifier()
+        else:
+            self.advance_token()
+            self.raise_unexpected("a type")
 
-    def compile_subroutine_dec(self):
+    def compileSubroutine(self):
         self.write_element_start("subroutineDec")
 
         self.compile_keyword(
@@ -72,13 +66,13 @@ class CompilationEngine:
             self.compile_type()
         self.compile_subroutine_name()
         self.compile_symbol(Tokens.LEFT_ROUND_BRACKET)
-        self.compile_parameter_list()
+        self.compileParameterList()
         self.compile_symbol(Tokens.RIGHT_ROUND_BRACKET)
-        self.compile_subroutine_body()
+        self.compileSubroutineBody()
 
         self.write_element_end("subroutineDec")
 
-    def compile_parameter_list(self):
+    def compileParameterList(self):
         self.write_element_start("parameterList")
 
         if self.tokenizer.see_next() in [
@@ -96,19 +90,19 @@ class CompilationEngine:
 
         self.write_element_end("parameterList")
 
-    def compile_subroutine_body(self):
+    def compileSubroutineBody(self):
         self.write_element_start("subroutineBody")
 
         self.compile_symbol(Tokens.LEFT_CURLY_BRACKET)
         while self.next_is(Tokens.VAR):
-            self.compile_var_dec()
+            self.compileVarDec()
 
-        self.compile_statements()
+        self.compileStatements()
         self.compile_symbol(Tokens.RIGHT_CURLY_BRACKET)
 
         self.write_element_end("subroutineBody")
 
-    def compile_var_dec(self):
+    def compileVarDec(self):
         self.write_element_start("varDec")
         self.compile_keyword(Tokens.VAR)
         self.compile_type()
@@ -128,7 +122,7 @@ class CompilationEngine:
     def compile_var_name(self):
         self.compile_identifier()
 
-    def compile_statements(self):
+    def compileStatements(self):
         self.write_element_start("statements")
 
         while self.next_is_statement():
@@ -138,74 +132,74 @@ class CompilationEngine:
 
     def compile_statement(self):
         if self.next_is(Tokens.LET):
-            self.compile_let()
+            self.compileLet()
         elif self.next_is(Tokens.IF):
-            self.compile_if()
+            self.compileIf()
         elif self.next_is(Tokens.WHILE):
-            self.compile_while()
+            self.compileWhile()
         elif self.next_is(Tokens.DO):
-            self.compile_do()
+            self.compileDo()
         elif self.next_is(Tokens.RETURN):
-            self.compile_return()
+            self.compileReturn()
 
-    def compile_let(self):
+    def compileLet(self):
         self.write_element_start("letStatement")
         self.compile_keyword(Tokens.LET)
         self.compile_var_name()
         if self.next_is(Tokens.LEFT_BOX_BRACKET):
             self.compile_symbol(Tokens.LEFT_BOX_BRACKET)
-            self.compile_expression()
+            self.compileExpression()
             self.compile_symbol(Tokens.RIGHT_BOX_BRACKET)
         self.compile_symbol(Tokens.EQUAL)
-        self.compile_expression()
+        self.compileExpression()
         self.compile_symbol(Tokens.SEMI_COLON)
         self.write_element_end("letStatement")
 
-    def compile_if(self):
+    def compileIf(self):
         self.write_element_start("ifStatement")
         self.compile_keyword(Tokens.IF)
         self.compile_symbol(Tokens.LEFT_ROUND_BRACKET)
-        self.compile_expression()
+        self.compileExpression()
         self.compile_symbol(Tokens.RIGHT_ROUND_BRACKET)
         self.compile_symbol(Tokens.LEFT_CURLY_BRACKET)
-        self.compile_statements()
+        self.compileStatements()
         self.compile_symbol(Tokens.RIGHT_CURLY_BRACKET)
         if self.next_is(Tokens.ELSE):
             self.compile_keyword(Tokens.ELSE)
             self.compile_symbol(Tokens.LEFT_CURLY_BRACKET)
-            self.compile_statements()
+            self.compileStatements()
             self.compile_symbol(Tokens.RIGHT_CURLY_BRACKET)
         self.write_element_end("ifStatement")
 
-    def compile_while(self):
+    def compileWhile(self):
         self.write_element_start("whileStatement")
         self.compile_keyword(Tokens.WHILE)
         self.compile_symbol(Tokens.LEFT_ROUND_BRACKET)
-        self.compile_expression()
+        self.compileExpression()
         self.compile_symbol(Tokens.RIGHT_ROUND_BRACKET)
         self.compile_symbol(Tokens.LEFT_CURLY_BRACKET)
-        self.compile_statements()
+        self.compileStatements()
         self.compile_symbol(Tokens.RIGHT_CURLY_BRACKET)
         self.write_element_end("whileStatement")
 
-    def compile_do(self):
+    def compileDo(self):
         self.write_element_start("doStatement")
         self.compile_keyword(Tokens.DO)
         self.compile_subroutine_call()
         self.compile_symbol(Tokens.SEMI_COLON)
         self.write_element_end("doStatement")
 
-    def compile_return(self):
+    def compileReturn(self):
         self.write_element_start("returnStatement")
         self.compile_keyword(Tokens.RETURN)
         if not self.next_is(Tokens.SEMI_COLON):
-            self.compile_expression()
+            self.compileExpression()
         self.compile_symbol(Tokens.SEMI_COLON)
         self.write_element_end("returnStatement")
 
-    def compile_expression(self):
+    def compileExpression(self):
         self.write_element_start("expression")
-        self.compile_term()
+        self.compileTerm()
         while self.next_is(
             [
                 Tokens.PLUS,
@@ -232,10 +226,11 @@ class CompilationEngine:
                     Tokens.EQUAL,
                 ]
             )
-            self.compile_term()
+            self.compileTerm()
         self.write_element_end("expression")
 
-    def compile_term(self):
+    def compileTerm(self):
+        self.ensure_more_tokens()
         self.write_element_start("term")
 
         if self.next_type_is(TokenType.INT_CONST):
@@ -262,7 +257,7 @@ class CompilationEngine:
             if self.next_is(Tokens.LEFT_BOX_BRACKET, idx=1):
                 self.compile_var_name()
                 self.compile_symbol(Tokens.LEFT_BOX_BRACKET)
-                self.compile_expression()
+                self.compileExpression()
                 self.compile_symbol(Tokens.RIGHT_BOX_BRACKET)
             elif self.next_is([Tokens.LEFT_ROUND_BRACKET, Tokens.DOT], idx=1):
                 self.compile_subroutine_call()
@@ -271,36 +266,37 @@ class CompilationEngine:
 
         elif self.next_is(Tokens.LEFT_ROUND_BRACKET):
             self.compile_symbol(Tokens.LEFT_ROUND_BRACKET)
-            self.compile_expression()
+            self.compileExpression()
             self.compile_symbol(Tokens.RIGHT_ROUND_BRACKET)
         elif self.next_is([Tokens.TILDE, Tokens.MINUS]):
             self.compile_symbol([Tokens.TILDE, Tokens.MINUS])
-            self.compile_term()
+            self.compileTerm()
         else:
-            self.raise_syntax_error("")
+            self.advance_token()
+            self.raise_unexpected("a term")
         self.write_element_end("term")
 
     def compile_subroutine_call(self):
         if self.next_is(Tokens.LEFT_ROUND_BRACKET, idx=1):
             self.compile_subroutine_name()
             self.compile_symbol(Tokens.LEFT_ROUND_BRACKET)
-            self.compile_expression_list()
+            self.compileExpressionList()
             self.compile_symbol(Tokens.RIGHT_ROUND_BRACKET)
         else:
             self.compile_identifier()
             self.compile_symbol(Tokens.DOT)
             self.compile_subroutine_name()
             self.compile_symbol(Tokens.LEFT_ROUND_BRACKET)
-            self.compile_expression_list()
+            self.compileExpressionList()
             self.compile_symbol(Tokens.RIGHT_ROUND_BRACKET)
 
-    def compile_expression_list(self):
+    def compileExpressionList(self):
         self.write_element_start("expressionList")
         if not self.next_is(Tokens.RIGHT_ROUND_BRACKET):
-            self.compile_expression()
+            self.compileExpression()
             while self.next_is(Tokens.COMMA):
                 self.compile_symbol(Tokens.COMMA)
-                self.compile_expression()
+                self.compileExpression()
         self.write_element_end("expressionList")
 
     def next_is_class_var_dec(self):
@@ -325,75 +321,94 @@ class CompilationEngine:
         else:
             return self.tokenizer.see_next(idx=idx) == tokens
 
-    def compile_keyword(self, tokens):
+    def ensure_more_tokens(self):
+        if not self.tokenizer.hasMoreTokens():
+            self.raise_syntax_error("unexpected end of file")
+
+    def advance_token(self):
+        self.ensure_more_tokens()
         self.tokenizer.advance()
-        if isinstance(tokens, list):
-            if self.tokenizer.current_token in tokens:
-                self.write_element(
-                    "keyword", self.tokenizer.current_token.token_escaped
-                )
-            else:
-                self.raise_syntax_error("")
+
+    def as_list(self, tokens):
+        return tokens if isinstance(tokens, list) else [tokens]
+
+    def compile_keyword(self, tokens):
+        self.advance_token()
+        if (
+            self.tokenizer.tokenType() == TokenType.KEYWORD
+            and self.tokenizer.keyWord() in self.as_list(tokens)
+        ):
+            self.write_element("keyword", self.tokenizer.keyWord().token)
         else:
-            if self.tokenizer.current_token == tokens:
-                self.write_element(
-                    "keyword", self.tokenizer.current_token.token_escaped
-                )
-            else:
-                self.raise_syntax_error("")
+            self.raise_unexpected(self.quoted(tokens))
 
     def compile_symbol(self, tokens):
-        self.tokenizer.advance()
-        if isinstance(tokens, list):
-            if self.tokenizer.current_token in tokens:
-                self.write_element(
-                    "symbol", self.tokenizer.current_token.token_escaped
-                )
-            else:
-                self.raise_syntax_error("")
+        self.advance_token()
+        expected = [token.token for token in self.as_list(tokens)]
+        if (
+            self.tokenizer.tokenType() == TokenType.SYMBOL
+            and self.tokenizer.symbol() in expected
+        ):
+            self.write_element("symbol", self.tokenizer.symbol())
         else:
-            if self.tokenizer.current_token == tokens:
-                self.write_element(
-                    "symbol", self.tokenizer.current_token.token_escaped
-                )
-            else:
-                self.raise_syntax_error("")
+            self.raise_unexpected(self.quoted(tokens))
 
     def compile_integer_constant(self):
-        self.tokenizer.advance()
-        if isinstance(self.tokenizer.current_token, IntegerConstant):
-            self.write_element(
-                "integerConstant", self.tokenizer.current_token.token_escaped
-            )
+        self.advance_token()
+        if self.tokenizer.tokenType() == TokenType.INT_CONST:
+            self.write_element("integerConstant", self.tokenizer.intVal())
         else:
-            self.raise_syntax_error("")
+            self.raise_unexpected("an integer constant")
 
     def compile_string_constant(self):
-        self.tokenizer.advance()
-        if isinstance(self.tokenizer.current_token, StringConstant):
-            self.write_element(
-                "stringConstant", self.tokenizer.current_token.token_escaped
-            )
+        self.advance_token()
+        if self.tokenizer.tokenType() == TokenType.STRING_CONST:
+            self.write_element("stringConstant", self.tokenizer.stringVal())
         else:
-            self.raise_syntax_error("")
+            self.raise_unexpected("a string constant")
 
     def compile_identifier(self):
-        self.tokenizer.advance()
-        if isinstance(self.tokenizer.current_token, Identifier):
-            self.write_element(
-                "identifier", self.tokenizer.current_token.token_escaped
-            )
+        self.advance_token()
+        if self.tokenizer.tokenType() == TokenType.IDENTIFIER:
+            self.write_element("identifier", self.tokenizer.identifier())
         else:
-            self.raise_syntax_error("")
+            self.raise_unexpected("an identifier")
 
     def write_element(self, elem_name, value):
-        self.wf.write("<%s> %s </%s>\n" % (elem_name, value, elem_name))
+        text = escape_xml(value)
+        self.wf.write(f"<{elem_name}> {text} </{elem_name}>\n")
 
     def write_element_start(self, elem_name):
-        self.wf.write("<%s>\n" % elem_name)
+        self.wf.write(f"<{elem_name}>\n")
 
     def write_element_end(self, elem_name):
-        self.wf.write("</%s>\n" % elem_name)
+        self.wf.write(f"</{elem_name}>\n")
+
+    def quoted(self, tokens):
+        return " or ".join(
+            f"'{token.token}'" for token in self.as_list(tokens)
+        )
+
+    def current_text(self):
+        kind = self.tokenizer.tokenType()
+        if kind == TokenType.KEYWORD:
+            text = self.tokenizer.keyWord().token
+        elif kind == TokenType.SYMBOL:
+            text = self.tokenizer.symbol()
+        elif kind == TokenType.IDENTIFIER:
+            text = self.tokenizer.identifier()
+        elif kind == TokenType.INT_CONST:
+            text = self.tokenizer.intVal()
+        else:
+            return f'"{self.tokenizer.stringVal()}"'
+        return f"'{text}'"
+
+    def raise_unexpected(self, expected):
+        line = self.tokenizer.current_token_line()
+        self.raise_syntax_error(
+            f"expected {expected} but found {self.current_text()}"
+            f" at line {line}"
+        )
 
     def raise_syntax_error(self, msg):
-        raise Exception("%s" % msg)
+        raise Exception(msg)

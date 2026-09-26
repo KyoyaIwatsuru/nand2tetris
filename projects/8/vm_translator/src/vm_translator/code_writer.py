@@ -1,14 +1,15 @@
-from constants import C_POP, C_PUSH, POINTER_BASE_ADDRESS, TEMP_BASE_ADDRESS
+from .constants import C_POP, C_PUSH, POINTER_BASE_ADDRESS, TEMP_BASE_ADDRESS
 
 
 class CodeWriter:
-    def __init__(self, filepath):
+    def __init__(self, filepath, write_bootstrap=True):
         self.f = open(filepath, "w")
         self.if_label_num = 0
         self.return_label_num = 0
         self.current_function_name = "init"
 
-        self.write_init()
+        if write_bootstrap:
+            self.write_init()
 
     def __enter__(self):
         return self
@@ -19,7 +20,7 @@ class CodeWriter:
     def set_file_name(self, file_name):
         self.current_translated_file_name = file_name
 
-    def write_arithmetic(self, command):
+    def writeArithmetic(self, command):
         if command in ["add", "sub", "and", "or"]:
             self.write_binary_operation(command)
         elif command in ["neg", "not"]:
@@ -27,12 +28,12 @@ class CodeWriter:
         elif command in ["eq", "gt", "lt"]:
             self.write_comp_operation(command)
 
-    def write_push_pop(self, command, segment, index):
+    def writePushPop(self, command, segment, index):
         index = int(index)
 
         if command == C_PUSH:
             if segment == "constant":
-                self.write_codes(["@%d" % index, "D=A"])
+                self.write_codes([f"@{index}", "D=A"])
                 self.write_push_from_d_register()
             elif segment in ["local", "argument", "this", "that"]:
                 self.write_push_from_virtual_segment(segment, index)
@@ -41,7 +42,7 @@ class CodeWriter:
             if segment == "static":
                 self.write_codes(
                     [
-                        "@%s.%d" % (self.current_translated_file_name, index),
+                        f"@{self.current_translated_file_name}.{index}",
                     ]
                 )
                 self.write_code("D=M")
@@ -57,31 +58,31 @@ class CodeWriter:
                 self.write_codes(
                     [
                         "D=M",
-                        "@%s.%d" % (self.current_translated_file_name, index),
+                        f"@{self.current_translated_file_name}.{index}",
                     ]
                 )
                 self.write_code("M=D")
 
-    def write_label(self, label):
-        self.write_code("(%s)" % self.get_label_name(label))
+    def writeLabel(self, label):
+        self.write_code(f"({self.get_label_name(label)})")
 
-    def write_goto(self, label):
-        self.write_codes(["@%s" % self.get_label_name(label), "0;JMP"])
+    def writeGoto(self, label):
+        self.write_codes([f"@{self.get_label_name(label)}", "0;JMP"])
 
-    def write_if(self, label):
+    def writeIf(self, label):
         self.write_pop_to_m_register()
-        self.write_codes(["D=M", "@%s" % self.get_label_name(label), "D;JNE"])
+        self.write_codes(["D=M", f"@{self.get_label_name(label)}", "D;JNE"])
 
-    def write_function(self, function_name, num_of_vars):
-        self.write_codes(["(%s)" % function_name, "D=0"])
+    def writeFunction(self, function_name, num_of_vars):
+        self.write_codes([f"({function_name})", "D=0"])
         for i in range(int(num_of_vars)):
             self.write_push_from_d_register()
 
         self.current_function_name = function_name
 
-    def write_call(self, function_name, num_of_args):
+    def writeCall(self, function_name, num_of_args):
         return_label = self.get_new_return_label()
-        self.write_codes(["// return-label", "@%s" % return_label, "D=A"])
+        self.write_codes(["// return-label", f"@{return_label}", "D=A"])
         self.write_push_from_d_register()
         self.write_codes(
             [
@@ -118,7 +119,7 @@ class CodeWriter:
                 "D=M",
                 "@5",
                 "D=D-A",
-                "@%d" % int(num_of_args),
+                f"@{int(num_of_args)}",
                 "D=D-A",
                 "@ARG",
                 "M=D",
@@ -131,13 +132,13 @@ class CodeWriter:
 
         self.write_codes(
             [
-                "@%s" % function_name,
+                f"@{function_name}",
                 "0;JMP",
-                "(%s)" % return_label,
+                f"({return_label})",
             ]
         )
 
-    def write_return(self):
+    def writeReturn(self):
         self.write_codes(
             [
                 "@LCL",
@@ -192,10 +193,10 @@ class CodeWriter:
 
     def write_init(self):
         self.write_set_sp(256)
-        self.write_call("Sys.init", 0)
+        self.writeCall("Sys.init", 0)
 
     def write_set_sp(self, address):
-        self.write_codes(["@%d" % address, "D=A", "@SP", "M=D"])
+        self.write_codes([f"@{address}", "D=A", "@SP", "M=D"])
 
     def write_binary_operation(self, command):
         self.write_pop_to_m_register()
@@ -238,14 +239,14 @@ class CodeWriter:
         self.write_codes(
             [
                 "D=M-D",
-                "@%s" % l1,
-                "D;%s" % comp_type,
+                f"@{l1}",
+                f"D;{comp_type}",
                 "D=0",
-                "@%s" % l2,
+                f"@{l2}",
                 "0;JMP",
-                "(%s)" % l1,
+                f"({l1})",
                 "D=-1",
-                "(%s)" % l2,
+                f"({l2})",
             ]
         )
         self.write_push_from_d_register()
@@ -259,7 +260,7 @@ class CodeWriter:
             register_name = "THIS"
         elif segment == "that":
             register_name = "THAT"
-        self.write_codes(["@%s" % register_name, "A=M"])
+        self.write_codes([f"@{register_name}", "A=M"])
         for i in range(index):
             self.write_code("A=A+1")
         self.write_code("D=M")
@@ -275,7 +276,7 @@ class CodeWriter:
         elif segment == "that":
             register_name = "THAT"
         self.write_pop_to_m_register()
-        self.write_codes(["D=M", "@%s" % register_name, "A=M"])
+        self.write_codes(["D=M", f"@{register_name}", "A=M"])
         for i in range(index):
             self.write_code("A=A+1")
         self.write_code("M=D")
@@ -287,7 +288,7 @@ class CodeWriter:
             base_address = POINTER_BASE_ADDRESS
         self.write_codes(
             [
-                "@%d" % base_address,
+                f"@{base_address}",
             ]
         )
         for i in range(index):
@@ -304,7 +305,7 @@ class CodeWriter:
         self.write_codes(
             [
                 "D=M",
-                "@%d" % base_address,
+                f"@{base_address}",
             ]
         )
         for i in range(index):
@@ -323,16 +324,13 @@ class CodeWriter:
 
     def get_label_name(self, label):
         try:
-            return "%s$%s" % (self.current_function_name, label)
+            return f"{self.current_function_name}${label}"
         except AttributeError:
-            return "%s$%s" % ("null", label)
+            return f"null${label}"
 
     def get_new_return_label(self):
         self.return_label_num += 1
-        return "%s$ret.%d" % (
-            self.current_function_name,
-            self.return_label_num,
-        )
+        return f"{self.current_function_name}$ret.{self.return_label_num}"
 
     def write_code(self, code):
         self.f.write(code + "\n")

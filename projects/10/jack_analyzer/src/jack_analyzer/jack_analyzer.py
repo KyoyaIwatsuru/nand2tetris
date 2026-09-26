@@ -1,15 +1,17 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
-
 import argparse
 import glob
 
-from compilation_engine import CompilationEngine
+from .compilation_engine import CompilationEngine
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("path", type=str, help="source file or directory")
+    parser = argparse.ArgumentParser(
+        description="Compile a Jack file (or directory of Jack files) "
+        "into XML."
+    )
+    parser.add_argument(
+        "path", help="path to a .jack file or a directory of .jack files"
+    )
 
     args = parser.parse_args()
     path = args.path
@@ -20,7 +22,7 @@ def main():
     else:
         if path.endswith("/"):
             path = path[:-1]
-        files = glob.glob("%s/*" % path)
+        files = glob.glob(f"{path}/*")
         for filepath in files:
             if filepath.endswith(".jack"):
                 compile(filepath)
@@ -28,8 +30,8 @@ def main():
 
 def compile(filepath):
     with CompilationEngine(filepath) as ce:
-        print("compiling %s ..." % filepath)
-        ce.compile()
+        print(f"compiling {filepath} ...")
+        ce.compileClass()
 
 
 if __name__ == "__main__":

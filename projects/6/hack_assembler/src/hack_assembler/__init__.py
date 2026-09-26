@@ -1,2 +1,3 @@
-def main() -> None:
-    print("Hello from hack-assembler!")
+from .hack_assembler import main
+
+__all__ = ["main"]

@@ -7,17 +7,11 @@ class TokenType:
     IDENTIFIER = 3
     INT_CONST = 4
     STRING_CONST = 5
-    COMMENT_START = 6
-    COMMENT_END = 6
 
 
 class Token:
-    def __init__(self, token, token_escaped=None):
+    def __init__(self, token):
         self.token = token
-        if token_escaped:
-            self.token_escaped = token_escaped
-        else:
-            self.token_escaped = token
 
 
 class Keyword(Token):
@@ -30,10 +24,6 @@ class Symbol(Token):
 
 class Identifier(Token):
     type = TokenType.IDENTIFIER
-
-
-class Constant(Token):
-    pass
 
 
 class IntegerConstant(Token):
@@ -85,10 +75,10 @@ class Tokens:
     MINUS = Symbol("-")
     MULTI = Symbol("*")
     DIV = Symbol("/")
-    AND = Symbol("&", token_escaped="&amp;")
+    AND = Symbol("&")
     PIPE = Symbol("|")
-    LESS_THAN = Symbol("<", token_escaped="&lt;")
-    GREATER_THAN = Symbol(">", token_escaped="&gt;")
+    LESS_THAN = Symbol("<")
+    GREATER_THAN = Symbol(">")
     EQUAL = Symbol("=")
     TILDE = Symbol("~")
 
@@ -140,10 +130,20 @@ TOKEN_MAP = {
     "~": Tokens.TILDE,
     "/*": Tokens.COMMENT_START,
     "*/": Tokens.COMMENT_END,
+    "//": Tokens.LINE_COMMENT_START,
 }
 
 IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 INTEGER_PATTERN = re.compile(r"^[0-9]+$")
 
-STRING_PATTERN = re.compile(r'^".*"$')
+STRING_PATTERN = re.compile(r'^"[^"\n]*"$')
+
+
+def escape_xml(value):
+    return (
+        str(value)
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )

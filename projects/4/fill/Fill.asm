@@ -64,7 +64,7 @@
     D;JLT
     // SCREEN[A+D] = -1
     @SCREEN
-    A=A+D
+    A=D+A
     M=-1
     // i = i + 1
     @i
@@ -81,7 +81,7 @@
     D;JLT
     // SCREEN[A+D] = 0
     @SCREEN
-    A=A+D
+    A=D+A
     M=0
     // i = i + 1
     @i

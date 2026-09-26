@@ -12,7 +12,7 @@
 CHIP PC {
     IN in[16],inc, load, reset;
     OUT out[16];
-    
+
     PARTS:
     //// Replace this comment with your code.
     Inc16(in=fb, out=w1);

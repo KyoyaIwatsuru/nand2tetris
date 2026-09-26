@@ -1,4 +1,4 @@
-from constants import C_POP, C_PUSH, POINTER_BASE_ADDRESS, TEMP_BASE_ADDRESS
+from .constants import C_POP, C_PUSH, POINTER_BASE_ADDRESS, TEMP_BASE_ADDRESS
 
 
 class CodeWriter:
@@ -12,7 +12,7 @@ class CodeWriter:
     def __exit__(self, exception_type, exception_value, traceback):
         self.f.close()
 
-    def write_arithmetic(self, command):
+    def writeArithmetic(self, command):
         if command in ["add", "sub", "and", "or"]:
             self.write_binary_operation(command)
         elif command in ["neg", "not"]:
@@ -20,12 +20,12 @@ class CodeWriter:
         elif command in ["eq", "gt", "lt"]:
             self.write_comp_operation(command)
 
-    def write_push_pop(self, command, segment, index):
+    def writePushPop(self, command, segment, index):
         index = int(index)
 
         if command == C_PUSH:
             if segment == "constant":
-                self.write_codes(["@%d" % index, "D=A"])
+                self.write_codes([f"@{index}", "D=A"])
                 self.write_push_from_d_register()
             elif segment in ["local", "argument", "this", "that"]:
                 self.write_push_from_virtual_segment(segment, index)
@@ -34,7 +34,7 @@ class CodeWriter:
             if segment == "static":
                 self.write_codes(
                     [
-                        "@%s.%d" % (self.current_translated_file_name, index),
+                        f"@{self.current_translated_file_name}.{index}",
                     ]
                 )
                 self.write_code("D=M")
@@ -50,7 +50,7 @@ class CodeWriter:
                 self.write_codes(
                     [
                         "D=M",
-                        "@%s.%d" % (self.current_translated_file_name, index),
+                        f"@{self.current_translated_file_name}.{index}",
                     ]
                 )
                 self.write_code("M=D")
@@ -99,14 +99,14 @@ class CodeWriter:
         self.write_codes(
             [
                 "D=M-D",
-                "@%s" % l1,
-                "D;%s" % comp_type,
+                f"@{l1}",
+                f"D;{comp_type}",
                 "D=0",
-                "@%s" % l2,
+                f"@{l2}",
                 "0;JMP",
-                "(%s)" % l1,
+                f"({l1})",
                 "D=-1",
-                "(%s)" % l2,
+                f"({l2})",
             ]
         )
         self.write_push_from_d_register()
@@ -120,7 +120,7 @@ class CodeWriter:
             register_name = "THIS"
         elif segment == "that":
             register_name = "THAT"
-        self.write_codes(["@%s" % register_name, "A=M"])
+        self.write_codes([f"@{register_name}", "A=M"])
         for i in range(index):
             self.write_code("A=A+1")
         self.write_code("D=M")
@@ -136,7 +136,7 @@ class CodeWriter:
         elif segment == "that":
             register_name = "THAT"
         self.write_pop_to_m_register()
-        self.write_codes(["D=M", "@%s" % register_name, "A=M"])
+        self.write_codes(["D=M", f"@{register_name}", "A=M"])
         for i in range(index):
             self.write_code("A=A+1")
         self.write_code("M=D")
@@ -148,7 +148,7 @@ class CodeWriter:
             base_address = POINTER_BASE_ADDRESS
         self.write_codes(
             [
-                "@%d" % base_address,
+                f"@{base_address}",
             ]
         )
         for i in range(index):
@@ -165,7 +165,7 @@ class CodeWriter:
         self.write_codes(
             [
                 "D=M",
-                "@%d" % base_address,
+                f"@{base_address}",
             ]
         )
         for i in range(index):

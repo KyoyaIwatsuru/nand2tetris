@@ -1,2 +1,3 @@
-def main() -> None:
-    print("Hello from jack-analyzer!")
+from .jack_analyzer import main
+
+__all__ = ["main"]

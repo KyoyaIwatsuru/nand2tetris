@@ -1,4 +1,4 @@
-from const import (
+from .const import (
     IDENTIFIER_PATTERN,
     INTEGER_PATTERN,
     STRING_PATTERN,
@@ -8,17 +8,18 @@ from const import (
     StringConstant,
     Tokens,
     TokenType,
+    escape_xml,
 )
-
-token_convert = {"&": "&amp;", "<": "&lt;", ">": "&gt;"}
 
 
 class JackTokenizer:
     def __init__(self, filepath):
         self.current_token = None
+        self.current_line = None
         self.line_num = 0
         self.remained_line = ""
         self.remained_tokens = []
+        self.remained_token_lines = []
 
         self.readfile = open(filepath)
 
@@ -40,11 +41,10 @@ class JackTokenizer:
                         elem_name = "stringConstant"
 
                     self.remained_tokens.append(token)
+                    self.remained_token_lines.append(self.line_num)
 
-                    write_f.write(
-                        "<%s> %s </%s>\n"
-                        % (elem_name, token.token_escaped, elem_name)
-                    )
+                    text = escape_xml(token.token)
+                    write_f.write(f"<{elem_name}> {text} </{elem_name}>\n")
                 else:
                     break
             write_f.write("</tokens>\n")
@@ -58,6 +58,9 @@ class JackTokenizer:
                 if self.remained_line is None:
                     return None
 
+                if self.remained_line.startswith("//"):
+                    self.remained_line = ""
+
             if self.remained_line:
                 return self._pop_token_from_remained_line()
 
@@ -65,13 +68,9 @@ class JackTokenizer:
         self.line_num += 1
         line = self.readfile.readline()
         if line:
-            self.remained_line = line.split(Tokens.LINE_COMMENT_START.token)[
-                0
-            ].strip()
-            return self.remained_line
+            self.remained_line = line.strip()
         else:
             self.remained_line = None
-            return self.remained_line
 
     def _pop_token_from_remained_line(self):
         self.remained_line = self.remained_line.lstrip()
@@ -93,13 +92,15 @@ class JackTokenizer:
                     if self.remained_line is None:
                         return None
 
+            if t_0 == Tokens.LINE_COMMENT_START:
+                self.remained_line = ""
+                return self.parse_next_token()
+
             if i == len(self.remained_line):
                 if self.judge_token(self.remained_line):
-                    self.current_token = self.judge_token(
-                        self.remained_line[0:i]
-                    )
+                    token = self.judge_token(self.remained_line[0:i])
                     self.remained_line = self.remained_line[i:]
-                    return self.current_token
+                    return token
                 else:
                     self.raise_exception("Unknown token exists")
             else:
@@ -108,11 +109,9 @@ class JackTokenizer:
                     if t_1:
                         continue
                     else:
-                        self.current_token = self.judge_token(
-                            self.remained_line[0:i]
-                        )
+                        token = self.judge_token(self.remained_line[0:i])
                         self.remained_line = self.remained_line[i:]
-                        return self.current_token
+                        return token
 
     def judge_token(self, judged_token):
         if judged_token in TOKEN_MAP:
@@ -123,21 +122,42 @@ class JackTokenizer:
             try:
                 return IntegerConstant(judged_token)
             except Exception as e:
-                self.raise_exception(e.message)
+                self.raise_exception(str(e))
         elif STRING_PATTERN.match(judged_token):
             return StringConstant(judged_token[1:-1])
         else:
             return None
 
     def raise_exception(self, msg):
-        raise Exception("%s at line %d" % (msg, self.line_num))
+        raise Exception(f"{msg} at line {self.line_num}")
+
+    def hasMoreTokens(self):
+        return len(self.remained_tokens) > 0
 
     def advance(self):
-        if len(self.remained_tokens) > 0:
-            self.current_token = self.remained_tokens.pop(0)
-        else:
-            self.current_token = None
+        self.current_token = self.remained_tokens.pop(0)
+        self.current_line = self.remained_token_lines.pop(0)
+
+    def tokenType(self):
+        return self.current_token.type
+
+    def keyWord(self):
         return self.current_token
+
+    def symbol(self):
+        return self.current_token.token
+
+    def identifier(self):
+        return self.current_token.token
+
+    def intVal(self):
+        return self.current_token.token
+
+    def stringVal(self):
+        return self.current_token.token
+
+    def current_token_line(self):
+        return self.current_line
 
     def see_next(self, idx=0):
         if len(self.remained_tokens) > idx:

@@ -1,17 +1,19 @@
 import argparse
-import code
 import os.path
 import re
-from parser import A_INSTRUCTION, C_INSTRUCTION, L_INSTRUCTION, Parser
 
-from symbol_table import SymbolTable
+from . import code
+from .parser import A_INSTRUCTION, C_INSTRUCTION, L_INSTRUCTION, Parser
+from .symbol_table import SymbolTable
 
-symbol_pattern = re.compile(r"([0-9]+)|([0-9a-zA-Z_\.\$:]+)")
+symbol_pattern = re.compile(r"([0-9]+)|([a-zA-Z_.$:][a-zA-Z0-9_.$:]*)")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Process some integers.")
-    parser.add_argument("asm_file", type=str, help="asm file")
+    parser = argparse.ArgumentParser(
+        description="Assemble a Hack .asm file into a .hack file."
+    )
+    parser.add_argument("asm_file", type=str, help="path to the .asm file")
 
     args = parser.parse_args()
     asm_file = args.asm_file
@@ -32,7 +34,11 @@ def main():
             ):
                 op_address += 1
             elif instruction_type == L_INSTRUCTION:
-                st.addEntry(p.symbol(), op_address)
+                label = p.symbol()
+                m = symbol_pattern.fullmatch(label)
+                if m is None or m.group(2) is None:
+                    raise Exception(f"Invalid label: {label}")
+                st.addEntry(label, op_address)
 
     with Parser(asm_file) as p:
         with open(save_file, "w") as wf:
@@ -42,7 +48,9 @@ def main():
 
                 if instruction_type == A_INSTRUCTION:
                     symbol = p.symbol()
-                    m = symbol_pattern.match(symbol)
+                    m = symbol_pattern.fullmatch(symbol)
+                    if m is None:
+                        raise Exception(f"Invalid symbol: {symbol}")
 
                     if m.group(1):
                         bincode = "0" + int2bin(int(m.group(1)), 15)

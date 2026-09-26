@@ -1,2 +1,3 @@
-def main() -> None:
-    print("Hello from vm-translator!")
+from .vm_translator import main
+
+__all__ = ["main"]

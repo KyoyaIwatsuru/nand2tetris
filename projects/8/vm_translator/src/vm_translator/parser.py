@@ -1,4 +1,4 @@
-from constants import (
+from .constants import (
     C_ARITHMETIC,
     C_CALL,
     C_FUNCTION,
@@ -35,7 +35,7 @@ class Parser:
                 self.current_command = None
                 break
 
-            line = line.rstrip().lstrip()
+            line = line.strip()
 
             comment_i = line.find("//")
             if comment_i != -1:
